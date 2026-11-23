@@ -1,0 +1,131 @@
+---
+title: "Industry workflow with clintrace"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Industry workflow with clintrace}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(clintrace)
+library(dplyr)
+```
+
+## Overview
+
+This vignette shows patterns suitable for production clinical programming:
+wrapping derivation functions, attaching lineage to datasets, validating
+completeness, and exporting metadata for Define-XML.
+
+## 1. Wrapping derivation functions
+
+Use `wrap_derive()` around any function that creates analysis variables
+(including admiral functions or company-specific helpers).
+
+```{r}
+dm <- load_example("dm")
+
+# Example function (replace with admiral::derive_vars_... in real use)
+derive_age_groups <- function(dataset) {
+  dataset %>%
+    mutate(
+      AGEGR1 = case_when(
+        AGE < 65 ~ "<65",
+        AGE < 75 ~ "65-74",
+        TRUE     ~ ">=75"
+      ),
+      AGEGR1N = case_when(
+        AGE < 65 ~ 1L,
+        AGE < 75 ~ 2L,
+        TRUE     ~ 3L
+      )
+    )
+}
+
+res <- wrap_derive(
+  data = dm,
+  trace = new_trace(study_id = "ABC-123"),
+  fun = derive_age_groups,
+  target_vars = c("AGEGR1", "AGEGR1N"),
+  source_dataset = "DM",
+  source_vars = c(AGEGR1 = "AGE", AGEGR1N = "AGE"),
+  algorithm = c(
+    AGEGR1  = "Age grouped into <65 / 65-74 / >=75 per SAP",
+    AGEGR1N = "Numeric version of AGEGR1"
+  ),
+  target_dataset = "ADSL"
+)
+
+adsl <- res$data
+tr   <- res$trace
+
+head(adsl[, c("USUBJID", "AGE", "AGEGR1", "AGEGR1N")])
+```
+
+## 2. Attach lineage to the dataset
+
+```{r}
+adsl <- attach_trace(adsl, tr)
+
+# Later in QC or reporting
+retrieved_trace <- get_trace(adsl)
+trace_summary(retrieved_trace)
+```
+
+## 3. Validation
+
+```{r}
+val <- validate_trace(tr)
+val$valid
+if (!val$valid) print(val$issues)
+```
+
+## 4. Define-XML / ADRG metadata export
+
+```{r}
+meta <- export_define_metadata(tr)
+meta[, c("Variable", "Origin", "Method")]
+```
+
+You can write this to CSV and feed it into your Define-XML generation process:
+
+```{r, eval = FALSE}
+write_define_metadata(tr, "adsl_define_methods.csv")
+```
+
+## 5. HTML report for QC package
+
+```{r, eval = FALSE}
+trace_report(
+  tr,
+  file = "adsl_lineage_report.html",
+  title = "ADSL Lineage Report — ABC-123",
+  study_info = list(
+    Protocol = "ABC-123",
+    Phase = "3",
+    Population = "Safety"
+  )
+)
+```
+
+## Integration notes for admiral users
+
+In a real admiral workflow you would typically:
+
+1. Call admiral derivation functions as usual.
+2. Immediately wrap the result (or the function itself) with `wrap_derive()`
+   or call `add_lineage()` for the key variables created.
+3. Attach the final trace object to the ADaM dataset with `attach_trace()`.
+4. Run `validate_trace()` as part of your QC checklist.
+5. Export `export_define_metadata()` output for the ADRG / Define-XML.
+
+This keeps lineage capture incremental and does not require rewriting existing
+derivation code.

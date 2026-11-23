@@ -1,0 +1,140 @@
+---
+title: "Getting started with clintrace"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with clintrace}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(clintrace)
+library(dplyr)
+```
+
+## Overview
+
+`clintrace` helps you record and query the lineage of analysis variables
+(especially ADaM) back to their SDTM sources. This is useful for regulatory
+traceability and QC in clinical trial programming.
+
+## 1. Load example source data
+
+```{r}
+dm <- load_example("dm")
+ex <- load_example("ex")
+
+head(dm)
+head(ex)
+```
+
+## 2. Create a trace object
+
+```{r}
+tr <- new_trace(study_id = "ABC-123")
+print(tr)
+```
+
+## 3. Classic workflow: derive then record
+
+```{r}
+adsl <- dm %>%
+  mutate(
+    AGEGR1 = case_when(
+      AGE < 65 ~ "<65",
+      AGE < 75 ~ "65-74",
+      TRUE     ~ ">=75"
+    )
+  )
+
+tr <- add_lineage(
+  tr,
+  target_dataset = "ADSL",
+  target_variable = "AGEGR1",
+  source_dataset = "DM",
+  source_variable = "AGE",
+  derivation_type = "derived",
+  algorithm = "case_when: <65, 65-74, >=75",
+  keys = "USUBJID"
+)
+```
+
+## 4. Industry helpers
+
+### Derive and record in one step
+
+```{r}
+res <- derive_with_trace(
+  data = dm,
+  trace = new_trace("ABC-123"),
+  target_variable = "AGEGR1",
+  expr = case_when(
+    AGE < 65 ~ "<65",
+    AGE < 75 ~ "65-74",
+    TRUE     ~ ">=75"
+  ),
+  source_dataset = "DM",
+  source_variable = "AGE",
+  algorithm = "Age banding per SAP"
+)
+
+adsl2 <- res$data
+tr2   <- res$trace
+head(adsl2[, c("USUBJID", "AGE", "AGEGR1")])
+```
+
+### Attach lineage metadata to the dataset
+
+```{r}
+adsl2 <- attach_trace(adsl2, tr2)
+retrieved <- get_trace(adsl2)
+print(retrieved)
+```
+
+### Validate completeness
+
+```{r}
+val <- validate_trace(tr2)
+val$valid
+```
+
+### Generate classic ADaM SRC* variables
+
+```{r}
+src_table <- src_vars_from_trace(tr2)
+src_table
+```
+
+### HTML report
+
+```{r, eval = FALSE}
+# Requires knitr
+trace_report(tr2, file = "adsl_lineage_report.html")
+```
+
+## 5. Batch recording
+
+```{r}
+batch_df <- data.frame(
+  target_dataset = c("ADSL", "ADSL"),
+  target_variable = c("SEXN", "SAFFL"),
+  source_dataset = c("DM", "EX"),
+  source_variable = c("SEX", "EXSTDTC"),
+  derivation_type = c("derived", "flag"),
+  algorithm = c("1=M, 2=F", "Y if any EX record"),
+  stringsAsFactors = FALSE
+)
+
+tr_batch <- add_lineage_batch(new_trace("ABC-123"), batch_df)
+query_lineage(tr_batch)
+```
+
+These patterns are intended for production ADaM programs that use `admiral`
+or custom code while still maintaining clear regulatory traceability.

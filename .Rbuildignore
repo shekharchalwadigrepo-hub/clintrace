@@ -1,0 +1,8 @@
+^clintrace\.Rproj$
+^.*\.Rproj$
+^\.Rproj\.user$
+^README\.md$
+^NEWS\.md$
+^cran-comments\.md$
+^revdep$
+^\.github$

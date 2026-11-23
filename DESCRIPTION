@@ -1,0 +1,32 @@
+Package: clintrace
+Title: Traceability and Lineage Tracking for Clinical Trial Data
+Version: 0.1.0
+Authors@R: person("Shekhar Eranna Chalwadi", email = "skrchalwadicg@gmail.com", role = c("aut", "cre"))
+Description: Tools for recording, querying, validating, and reporting data lineage
+    and traceability in clinical trial programming workflows (raw to SDTM to
+    ADaM to TLF). Supports variable-level and record-level traceability aligned
+    with CDISC ADaM expectations (SRCDOM, SRCVAR, SRCSEQ). Designed for use
+    alongside pharmaverse packages such as admiral.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    dplyr (>= 1.1.0),
+    tibble (>= 3.0.0),
+    glue,
+    rlang,
+    htmltools,
+    utils
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    admiral,
+    pharmaversesdtm,
+    DT
+VignetteBuilder: knitr
+URL: https://github.com/shekharchalwadigrepo-hub/clintrace
+BugReports: https://github.com/shekharchalwadigrepo-hub/clintrace/issues
+Config/testthat/edition: 3
+LazyData: true
+RoxygenNote: 7.3.2
