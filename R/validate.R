@@ -48,10 +48,10 @@ validate_trace <- function(trace,
   }
 
   # 3. Duplicate target_variable + target_dataset
-  dups <- recs %>%
-    dplyr::count(target_dataset, target_variable) %>%
-    dplyr::filter(n > 1)
-  if (nrow(dups)) {
+  key <- paste(recs$target_dataset, recs$target_variable, sep = "||")
+  dup_keys <- key[duplicated(key) | duplicated(key, fromLast = TRUE)]
+  if (length(dup_keys)) {
+    dups <- unique(recs[key %in% dup_keys, c("target_dataset", "target_variable")])
     dups$issue <- "Duplicate target_variable in same dataset"
     dups$step_id <- NA_integer_
     dups$derivation_type <- NA_character_

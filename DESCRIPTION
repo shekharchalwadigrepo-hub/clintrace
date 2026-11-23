@@ -13,7 +13,6 @@ Depends: R (>= 4.1.0)
 Imports:
     dplyr (>= 1.1.0),
     tibble (>= 3.0.0),
-    glue,
     rlang,
     htmltools,
     utils

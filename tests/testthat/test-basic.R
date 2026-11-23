@@ -31,6 +31,8 @@ test_that("load_example works", {
   expect_true("AGE" %in% names(dm))
   expect_gt(nrow(dm), 0)
 })
+
+test_that("suggest_src_vars returns list", {
   tr <- new_trace("TEST-001")
   tr <- add_lineage(tr, "ADSL", "AGEGR1", "DM", "AGE")
   src <- suggest_src_vars(tr, "AGEGR1")

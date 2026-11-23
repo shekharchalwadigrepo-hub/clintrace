@@ -29,30 +29,36 @@ export_define_metadata <- function(trace, target_dataset = NULL) {
     ))
   }
 
-  recs %>%
-    dplyr::group_by(target_dataset, target_variable) %>%
-    dplyr::slice(1) %>%
-    dplyr::ungroup() %>%
-    dplyr::transmute(
-      Dataset = target_dataset,
-      Variable = target_variable,
-      Origin = dplyr::case_when(
-        derivation_type == "direct" ~ paste0("Predecessor: ", source_dataset, ".", source_variable),
-        TRUE ~ paste0("Derived from ", source_dataset, ".", source_variable)
-      ),
-      Method = dplyr::if_else(
-        derivation_type == "direct",
-        "Copied from source",
-        algorithm
-      ),
-      Comment = paste0(
-        "Traceability: ", source_dataset, ".", source_variable,
-        " (", derivation_type, ")"
-      ),
-      DerivationType = derivation_type,
-      SourceDataset = source_dataset,
-      SourceVariable = source_variable
-    )
+  # Take first record per target variable
+  recs <- recs[!duplicated(recs[, c("target_dataset", "target_variable")]), ]
+
+  origin <- ifelse(
+    recs$derivation_type == "direct",
+    paste0("Predecessor: ", recs$source_dataset, ".", recs$source_variable),
+    paste0("Derived from ", recs$source_dataset, ".", recs$source_variable)
+  )
+
+  method <- ifelse(
+    recs$derivation_type == "direct",
+    "Copied from source",
+    recs$algorithm
+  )
+
+  comment <- paste0(
+    "Traceability: ", recs$source_dataset, ".", recs$source_variable,
+    " (", recs$derivation_type, ")"
+  )
+
+  tibble::tibble(
+    Dataset = recs$target_dataset,
+    Variable = recs$target_variable,
+    Origin = origin,
+    Method = method,
+    Comment = comment,
+    DerivationType = recs$derivation_type,
+    SourceDataset = recs$source_dataset,
+    SourceVariable = recs$source_variable
+  )
 }
 
 #' Write Define-XML friendly metadata to CSV
