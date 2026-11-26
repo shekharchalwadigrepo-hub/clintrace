@@ -3,16 +3,17 @@
 Industry-oriented traceability and lineage tracking for clinical trial data
 (SDTM → ADaM → TLF).
 
-Designed to sit alongside pharmaverse packages (`admiral`, `sdtm.oak`, `metacore`, etc.)
-and help satisfy regulatory expectations for data-point and metadata traceability.
+`clintrace` helps clinical programmers record, validate, query, and report
+data lineage so that every analysis value can be traced back to its source.
+It is designed to work alongside pharmaverse packages such as `admiral`.
 
 ## Installation
 
 ```r
-# From the source tarball
-install.packages("clintrace_0.1.0.tar.gz", repos = NULL, type = "source")
+# From CRAN (once accepted)
+# install.packages("clintrace")
 
-# Or after you push to GitHub
+# Development version from GitHub
 # remotes::install_github("shekharchalwadigrepo-hub/clintrace")
 ```
 
@@ -20,8 +21,10 @@ install.packages("clintrace_0.1.0.tar.gz", repos = NULL, type = "source")
 
 - Record variable-level and record-level lineage
 - One-step derivation + lineage capture (`derive_with_trace`)
+- Wrap existing functions and capture lineage automatically (`wrap_derive`)
 - Validation of trace completeness (`validate_trace`)
 - Classic ADaM SRC* variable generation (`src_vars_from_trace`)
+- Define-XML friendly metadata export (`export_define_metadata`)
 - HTML reports suitable for QC or ADRG appendices (`trace_report`)
 - Attach lineage metadata directly to datasets
 
@@ -44,35 +47,17 @@ res <- derive_with_trace(
   algorithm = "Binary age grouping"
 )
 
-adsl <- res$data
-tr   <- res$trace
+adsl <- attach_trace(res$data, res$trace)
 
-# Attach lineage to the dataset itself
-adsl <- attach_trace(adsl, tr)
-
-# Later retrieve it
+# Later retrieve and inspect
 get_trace(adsl)
-
-# Validate and report
-validate_trace(tr)
-src_vars_from_trace(tr)
-# trace_report(tr, file = "lineage_report.html")
+validate_trace(res$trace)
+src_vars_from_trace(res$trace)
 ```
 
-## CRAN readiness
-
-1. Update author/email in `DESCRIPTION`.
-2. `R CMD check --as-cran`
-3. Submit via https://cran.r-project.org/submit.html
-
-## New in 0.3.0
-
-- `wrap_derive()` — wrap any admiral or custom function and capture lineage automatically
-- `export_define_metadata()` / `write_define_metadata()` — Define-XML friendly Origin/Method/Comment export
-- Stronger validation rules
+## Wrapping existing functions
 
 ```r
-# Wrap a custom or admiral-style function
 agegr_fun <- function(df) {
   df$AGEGR1 <- ifelse(df$AGE < 65, "<65", ">=65")
   df
@@ -88,17 +73,27 @@ res <- wrap_derive(
   algorithm = "Binary age grouping per SAP"
 )
 
-# Export metadata for Define-XML
+# Export metadata for Define-XML / ADRG
 export_define_metadata(res$trace)
-# write_define_metadata(res$trace, "define_methods.csv")
 ```
 
-- **admiral-style wrapper example**: `inst/examples/admiral_style_wrapper.R`
-- **Polished HTML report**: `trace_report()` (summary cards + validation status)
-- **CI**: GitHub Actions workflow included for `R CMD check` on Linux/Windows/macOS
+## HTML report
 
 ```r
-# Generate a polished report
-trace_report(tr, file = "lineage_report.html",
-             study_info = list(Protocol = "ABC-123", Phase = "3"))
+trace_report(
+  res$trace,
+  file = "lineage_report.html",
+  study_info = list(Protocol = "ABC-123", Phase = "3")
+)
 ```
+
+## More examples
+
+- Getting started vignette: `vignette("getting-started", package = "clintrace")`
+- Industry workflow vignette: `vignette("industry-workflow", package = "clintrace")`
+- Example scripts: `system.file("examples", package = "clintrace")`
+
+## Author
+
+Shekhar Eranna Chalwadi  
+Email: skrchalwadi@gmail.com
